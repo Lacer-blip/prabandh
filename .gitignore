@@ -1,0 +1,15 @@
+# Backend
+backend/venv/
+backend/**/__pycache__/
+backend/**/*.pyc
+backend/irais.db
+backend/.env
+backend/curl
+
+# Frontend
+frontend/node_modules/
+frontend/dist/
+
+# General
+.DS_Store
+*.log
