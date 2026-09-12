@@ -1,0 +1,9 @@
+train_number,train_name,category,direction,origin_station,origin_time_decimal,dest_station,dest_time_decimal
+20172,Vande Bharat Express,Vande Bharat,UP,ET,5.75,BPL,7.00
+12002,New Delhi Shatabdi,Shatabdi,DN,BPL,14.40,ET,15.75
+12616,Grand Trunk Express,Express,DN,BPL,3.25,ET,4.80
+12722,Dakshin Express,Express,DN,BPL,18.10,ET,19.90
+12156,Shan-e-Bhopal Express,Express,UP,ET,21.00,BPL,22.35
+BOXN-91,Coal Freight Rake,Freight,UP,ET,11.50,BPL,14.25
+BCN-44,Grain Freight Rake,Freight,DN,BPL,16.20,ET,19.50
+12438,Secunderabad Rajdhani,Rajdhani,UP,ET,8.50,BPL,9.75

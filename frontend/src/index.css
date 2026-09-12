@@ -1,0 +1,8 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Force dark mode color-scheme fallback */
+.dark {
+  color-scheme: dark;
+}
