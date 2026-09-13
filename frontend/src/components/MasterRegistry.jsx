@@ -3,8 +3,10 @@ import React, { useState } from 'react';
 export default function MasterRegistry({ 
   blocks = [], 
   conflicts = [],
+  user, // <-- ADDED
   onSanctionBlock, 
   onExecuteShadowMerge, 
+  onMarkComplete, // <-- ADDED
   isApprover = false,
   lang = 'en' 
 }) {
@@ -16,7 +18,8 @@ export default function MasterRegistry({
     const status = String(b?.status || '');
     if (filter === 'CONFLICT') return status === 'CONFLICT_DETECTED';
     if (filter === 'PENDING') return status === 'PENDING_SANCTION';
-    if (filter === 'APPROVED') return status.includes('APPROVED');
+    // Group COMPLETED blocks under the APPROVED tab so they don't disappear
+    if (filter === 'APPROVED') return status.includes('APPROVED') || status === 'COMPLETED'; 
     return true;
   });
 
@@ -64,7 +67,7 @@ export default function MasterRegistry({
           <strong className={isApprover ? 'text-emerald-400' : 'text-blue-400'}>
             {isApprover 
               ? (lang === 'hi' ? 'ऑपरेटिंग प्राधिकारी (प्रतिबंध सक्षम)' : 'Operating Authority (Sanction Enabled)') 
-              : (lang === 'hi' ? 'विभाग अनुरोध ट्रैकिंग (केवल पढ़ने के लिए)' : 'Department Requisition Tracking (Read-Only)')}
+              : (lang === 'hi' ? 'विभाग अनुरोध ट्रैकिंग (केवल पढ़ने के लिए)' : 'Department Requisition Tracking')}
           </strong>
         </span>
       </div>
@@ -83,7 +86,7 @@ export default function MasterRegistry({
               {isApprover ? (
                 <th className="py-3 px-3 text-right">{lang === 'hi' ? 'कंट्रोलर कार्रवाई' : 'Controller Action'}</th>
               ) : (
-                <th className="py-3 px-3 text-right">{lang === 'hi' ? 'प्रतिबंध प्राधिकारी' : 'Sanction Authority'}</th>
+                <th className="py-3 px-3 text-right">{lang === 'hi' ? 'विभागीय कार्रवाई' : 'Department Action'}</th>
               )}
             </tr>
           </thead>
@@ -94,6 +97,7 @@ export default function MasterRegistry({
               const isPending = statusStr === 'PENDING_SANCTION';
               const isApproved = statusStr.includes('APPROVED');
               const isShadow = statusStr.includes('SHADOW');
+              const isCompleted = statusStr === 'COMPLETED'; // <-- ADDED
 
               const hasPowerCut =
                 b?.power_cut === true ||
@@ -148,6 +152,7 @@ export default function MasterRegistry({
                         </div>
                       </div>
                     )}
+                    
                     {isConflict && (() => {
                         const matchingConflict = conflicts.find(
                           (c) => c.block_a_id === b.id || c.block_b_id === b.id
@@ -164,6 +169,7 @@ export default function MasterRegistry({
                           </button>
                         );
                       })()}
+                      
                     {isApproved && (
                       <div className="space-y-1">
                         <span className={`inline-block text-[10px] font-bold px-2 py-0.5 rounded border ${
@@ -177,6 +183,18 @@ export default function MasterRegistry({
                         </span>
                         <div className="text-[10px] text-emerald-400 font-mono font-bold">
                           PN: {b.private_number || 'BPL-PN-4412'}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* NEW: Completed Badge */}
+                    {isCompleted && (
+                      <div className="space-y-1">
+                        <span className="inline-block bg-slate-800 border border-slate-600 text-slate-300 text-[10px] font-bold px-2 py-0.5 rounded">
+                          {lang === 'hi' ? 'पूरा हुआ' : 'COMPLETED'}
+                        </span>
+                        <div className="text-[10px] text-slate-500 font-mono">
+                          {lang === 'hi' ? 'ट्रैक साफ' : 'Track Clear'}
                         </div>
                       </div>
                     )}
@@ -209,9 +227,14 @@ export default function MasterRegistry({
                             {lang === 'hi' ? 'परमिट सक्रिय ✓' : 'Permit Active ✓'}
                           </span>
                         )}
+                        {isCompleted && (
+                          <span className="text-emerald-500 text-xs font-mono font-bold">
+                            {lang === 'hi' ? 'ब्लॉक बंद कर दिया गया ✓' : 'Block Closed ✓'}
+                          </span>
+                        )}
                       </div>
                     ) : (
-                      <div className="text-right">
+                      <div className="flex justify-end">
                         {isConflict && (
                           <span className="text-amber-400 text-[11px] font-mono">
                             {lang === 'hi' ? 'टकराव समीक्षा में' : 'In Conflict Review'}
@@ -222,9 +245,25 @@ export default function MasterRegistry({
                             {lang === 'hi' ? 'वरिष्ठ DOM clearance की प्रतीक्षा है' : 'Awaiting Sr. DOM Clearance'}
                           </span>
                         )}
+                        {/* DEPT MARK DONE BUTTON */}
                         {isApproved && (
-                          <span className="text-emerald-400 text-[11px] font-mono font-bold">
-                            {lang === 'hi' ? 'स्वीकृति प्रदान की गई ✓' : 'Sanction Granted ✓'}
+                          user?.portalType === 'DEPT' ? (
+                            <button
+                              onClick={() => onMarkComplete && onMarkComplete(b.id)}
+                              className="px-3 py-1.5 bg-emerald-600/20 hover:bg-emerald-600/40 border border-emerald-500/50 text-emerald-400 rounded transition-colors text-xs font-semibold flex items-center gap-1 cursor-pointer"
+                            >
+                              <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"></path></svg>
+                              {lang === 'hi' ? 'कार्य पूर्ण करें' : 'Mark Work Done'}
+                            </button>
+                          ) : (
+                            <span className="text-emerald-400 text-[11px] font-mono font-bold">
+                              {lang === 'hi' ? 'स्वीकृति प्रदान की गई ✓' : 'Sanction Granted ✓'}
+                            </span>
+                          )
+                        )}
+                        {isCompleted && (
+                          <span className="text-slate-500 text-[11px] font-mono font-bold">
+                            {lang === 'hi' ? 'कार्य समाप्त ✓' : 'Work Finished ✓'}
                           </span>
                         )}
                       </div>

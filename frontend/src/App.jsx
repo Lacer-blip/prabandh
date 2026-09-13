@@ -8,12 +8,13 @@ import MasterRegistry from './components/MasterRegistry';
 import TimeDistanceChart from './components/TimeDistanceChart';
 import DisruptionSimulator from './components/DisruptionSimulator';
 import COATrafficManager from './components/COATrafficManager';
+import ReportsAnalytics from './components/ReportsAnalytics'; 
 import { initialStats } from './data/mockData';
 import { api, setAuthToken } from './api';
 
 export default function App() {
   const [theme, setTheme] = useState('light');
-  const [lang, setLang] = useState('en'); // 'en' or 'hi' for IRCTC style language switching
+  const [lang, setLang] = useState('en'); 
   const [textSize, setTextSize] = useState('base');
   const [user, setUser] = useState(null);
   const [activeTab, setActiveTab] = useState('dashboard');
@@ -70,18 +71,26 @@ export default function App() {
 
   const handleLoginSuccess = (officer) => {
     setUser(officer);
-    if (officer.portalType === 'APPROVER') {
+    if (officer.portalType === 'APPROVER' || officer.portalType === 'COA') {
       setActiveTab('dashboard');
-    } else if (officer.portalType === 'COA') {
-      setActiveTab('timetable-feed');
     } else {
       setActiveTab('requisition');
     }
   };
 
-  const handleExecuteShadowMerge = async (conflictId) => {
+  // --- BULLETPROOF SHADOW MERGE HANDLER ---
+  const handleExecuteShadowMerge = async (targetId) => {
     try {
-      await api.shadowMerge(conflictId);
+      // Automatically map Block IDs (e.g. REQ-...) to their matching Conflict ID if needed
+      let actualConflictId = targetId;
+      const matchingConflict = conflicts.find(c => 
+        c.id === targetId || c.block_id_1 === targetId || c.block_id_2 === targetId || c.blockId === targetId
+      );
+      if (matchingConflict) {
+        actualConflictId = matchingConflict.id;
+      }
+
+      await api.shadowMerge(actualConflictId);
       await fetchAllData();
       alert("⚡ AI Shadow Block Executed! Possessions merged into one unified window.");
     } catch (err) {
@@ -101,6 +110,26 @@ export default function App() {
       alert(`Block ${blockId} Sanctioned! Section Controller Private Number: ${updatedBlock.private_number}`);
     } catch (err) {
       alert(`Sanction failed: ${err.message}`);
+    }
+  };
+
+  // --- NEW: MARK BLOCK AS COMPLETED ---
+  const handleMarkComplete = async (blockId) => {
+    try {
+      const updatedBlock = await api.completeBlock(blockId);
+      
+      // Update the local state so the UI changes instantly without refreshing
+      setBlocks(prev => prev.map(b => (b.id === blockId ? updatedBlock : b)));
+      
+      // Update stats: move it out of active blocks
+      setStats(prev => ({
+        ...prev,
+        active_blocks_today: Math.max(0, prev.active_blocks_today - 1)
+      }));
+      
+      alert(`Block ${blockId} marked as COMPLETED. Track handed back to operations!`);
+    } catch (err) {
+      alert(`Failed to complete block: ${err.message}`);
     }
   };
 
@@ -149,6 +178,7 @@ export default function App() {
   const isApprover = user?.portalType === 'APPROVER';
   const isCOA = user?.portalType === 'COA';
   const isDept = user?.portalType === 'DEPT';
+  const isGlobalAdmin = isApprover || isCOA;
 
   return (
     <div className={`min-h-screen ${textSize === 'sm' ? 'text-xs' : textSize === 'lg' ? 'text-base' : 'text-sm'} bg-slate-100 dark:bg-[#080d1a] text-slate-900 dark:text-slate-100 font-sans flex flex-col transition-colors duration-200`}>
@@ -177,11 +207,11 @@ export default function App() {
 
             {/* Role-Specific Navigation */}
             <div className="flex flex-wrap gap-1 bg-white dark:bg-slate-900 p-1.5 rounded-xl border border-slate-300 dark:border-slate-800 shadow-sm">
-              {(isApprover || isCOA) && (
+              {isGlobalAdmin && (
                 <button
                   onClick={() => setActiveTab('dashboard')}
                   className={`px-4 py-2 text-xs font-bold rounded-lg transition cursor-pointer ${
-                    activeTab === 'dashboard' ? 'bg-emerald-700 text-white shadow' : 'text-slate-600 dark:text-slate-400'
+                    activeTab === 'dashboard' ? 'bg-emerald-700 text-white shadow' : 'text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-800'
                   }`}
                 >
                   {lang === 'hi' ? 'ऑपरेशंस कमांड' : 'Operations Command'}
@@ -191,7 +221,7 @@ export default function App() {
               <button
                 onClick={() => setActiveTab('registry')}
                 className={`px-4 py-2 text-xs font-bold rounded-lg transition cursor-pointer ${
-                  activeTab === 'registry' ? 'bg-blue-600 text-white shadow' : 'text-slate-600 dark:text-slate-400'
+                  activeTab === 'registry' ? 'bg-blue-600 text-white shadow' : 'text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-800'
                 }`}
               >
                 {isApprover 
@@ -202,7 +232,7 @@ export default function App() {
               <button
                 onClick={() => setActiveTab('strings')}
                 className={`px-4 py-2 text-xs font-bold rounded-lg transition cursor-pointer ${
-                  activeTab === 'strings' ? 'bg-blue-600 text-white shadow' : 'text-slate-600 dark:text-slate-400'
+                  activeTab === 'strings' ? 'bg-blue-600 text-white shadow' : 'text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-800'
                 }`}
               >
                 {lang === 'hi' ? 'COA स्ट्रिंग चार्ट' : 'COA String Chart'} ({trains.length})
@@ -223,7 +253,7 @@ export default function App() {
                 <button
                   onClick={() => setActiveTab('timetable-feed')}
                   className={`px-4 py-2 text-xs font-bold rounded-lg transition cursor-pointer ${
-                    activeTab === 'timetable-feed' ? 'bg-blue-800 text-white shadow' : 'text-blue-800 dark:text-blue-400'
+                    activeTab === 'timetable-feed' ? 'bg-blue-800 text-white shadow' : 'text-blue-800 dark:text-blue-400 hover:bg-slate-200 dark:hover:bg-slate-800'
                   }`}
                 >
                   {lang === 'hi' ? 'समय सारणी और माल ढुलाई फ़ीड (COA)' : 'Timetable & Goods Feed (COA)'}
@@ -234,16 +264,27 @@ export default function App() {
                 <button
                   onClick={() => setActiveTab('requisition')}
                   className={`px-4 py-2 text-xs font-bold rounded-lg transition cursor-pointer ${
-                    activeTab === 'requisition' ? 'bg-blue-600 text-white shadow' : 'text-slate-600 dark:text-slate-400'
+                    activeTab === 'requisition' ? 'bg-blue-600 text-white shadow' : 'text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-800'
                   }`}
                 >
                   {lang === 'hi' ? '+ ब्लॉक अनुरोध दर्ज करें' : '+ Lodge Block Request'} ({user.initials})
                 </button>
               )}
+
+              {(isApprover || isDept || isCOA) && (
+                <button
+                  onClick={() => setActiveTab('reports')}
+                  className={`px-4 py-2 text-xs font-bold rounded-lg transition cursor-pointer ${
+                    activeTab === 'reports' ? 'bg-blue-600 text-white shadow' : 'text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-800'
+                  }`}
+                >
+                  {lang === 'hi' ? 'रिपोर्ट और एनालिटिक्स' : 'Reports & Analytics'}
+                </button>
+              )}
             </div>
 
-            {/* Tab Views with passed theme and lang props */}
-            {activeTab === 'dashboard' && (
+            {/* Tab Views */}
+            {activeTab === 'dashboard' && isGlobalAdmin && (
               <Dashboard
                 stats={stats}
                 conflicts={conflicts}
@@ -257,8 +298,10 @@ export default function App() {
               <MasterRegistry
                 blocks={blocks}
                 conflicts={conflicts}
+                user={user}
                 onSanctionBlock={isApprover ? handleSanctionBlock : null}
                 onExecuteShadowMerge={handleExecuteShadowMerge}
+                onMarkComplete={handleMarkComplete}
                 isApprover={isApprover}
                 theme={theme}
                 lang={lang}
@@ -296,6 +339,15 @@ export default function App() {
               <COATrafficManager
                 trains={trains}
                 onUpdateTrains={(newTrains) => setTrains(newTrains)}
+                theme={theme}
+                lang={lang}
+              />
+            )}
+
+            {activeTab === 'reports' && (
+              <ReportsAnalytics 
+                currentUser={user} 
+                blocks={blocks} 
                 theme={theme}
                 lang={lang}
               />
