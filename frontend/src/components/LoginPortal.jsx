@@ -9,7 +9,7 @@ export default function LoginPortal({ onLoginSuccess }) {
   const [selectedDept, setSelectedDept] = useState('Civil Engineering (TMS)');
   const [errorMsg, setErrorMsg] = useState('');
 
-   const handleLogin = async (e) => {
+  const handleLogin = async (e) => {
     e.preventDefault();
     setErrorMsg('');
 
@@ -41,12 +41,15 @@ export default function LoginPortal({ onLoginSuccess }) {
 
   return (
     <div className="min-h-screen bg-slate-100 dark:bg-slate-950 flex flex-col justify-between font-sans transition-colors">
-      <div className="bg-[#0b192c] text-white px-6 py-2.5 flex justify-between items-center text-xs">
+      <div className="bg-[#0b192c] text-white px-6 py-2 flex justify-between items-center text-xs">
         <div className="flex items-center space-x-2">
           <span>🇮🇳</span>
           <span className="font-bold">Government of India • Ministry of Railways</span>
         </div>
-        <div className="font-mono text-blue-300">IR-AIS v2.4 (CRIS Architecture)</div>
+        <div className="font-mono text-center my-0.5">
+          <span className="text-emerald-400 font-bold">PRABANDH</span>
+          <span className="text-slate-400 text-[10px] hidden sm:inline"> — Platform for Railway Asset Block Allocation & Network Data Hub</span>
+        </div>
       </div>
 
       <div className="max-w-xl w-full mx-auto px-4 py-8">
@@ -71,7 +74,7 @@ export default function LoginPortal({ onLoginSuccess }) {
                   : 'bg-slate-50 dark:bg-slate-950 text-slate-500 hover:text-slate-900 dark:hover:text-white'
               }`}
             >
-              🚦 Approver (Sr. DOM)
+              Approver (Sr. DOM)
             </button>
 
             <button
@@ -83,7 +86,7 @@ export default function LoginPortal({ onLoginSuccess }) {
                   : 'bg-slate-50 dark:bg-slate-950 text-slate-500 hover:text-slate-900 dark:hover:text-white'
               }`}
             >
-              🛠️ Dept Inputs
+              Dept Inputs
             </button>
 
             <button
@@ -91,11 +94,11 @@ export default function LoginPortal({ onLoginSuccess }) {
               onClick={() => handleSwitchMode('COA')}
               className={`py-3 text-center transition cursor-pointer ${
                 portalMode === 'COA'
-                  ? 'bg-purple-700 text-white border-b-2 border-purple-400'
+                  ? 'bg-blue-800 text-white border-b-2 border-blue-400'
                   : 'bg-slate-50 dark:bg-slate-950 text-slate-500 hover:text-slate-900 dark:hover:text-white'
               }`}
             >
-              📊 COA Traffic Feed
+              COA Traffic Feed
             </button>
           </div>
 
@@ -160,7 +163,7 @@ export default function LoginPortal({ onLoginSuccess }) {
                 portalMode === 'APPROVER'
                   ? 'bg-emerald-600 hover:bg-emerald-700'
                   : portalMode === 'COA'
-                  ? 'bg-purple-600 hover:bg-purple-700'
+                  ? 'bg-blue-800 hover:bg-blue-900'
                   : 'bg-blue-600 hover:bg-blue-700'
               }`}
             >

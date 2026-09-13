@@ -13,7 +13,8 @@ const defaultTrainSchedule = [
 
 export default function TimeDistanceChart({ 
   trains = [], 
-  blockWindow = { start: 8.0, end: 12.0, label: "SANCTIONED SHADOW BLOCK (08:00 – 12:00)" } 
+  blockWindow = { start: 8.0, end: 12.0, label: "SANCTIONED SHADOW BLOCK (08:00 – 12:00)" },
+  lang = 'en'
 }) {
   const activeTrains = trains && trains.length > 0 ? trains : defaultTrainSchedule;
 
@@ -31,14 +32,16 @@ export default function TimeDistanceChart({
         <div>
           <h3 className="text-base font-bold text-slate-900 dark:text-white flex items-center space-x-2">
             <span>📈</span>
-            <span>Master Time-Distance Trajectory Chart (CRIS Section String View)</span>
+            <span>{lang === 'hi' ? 'मास्टर समय-दूरी प्रक्षेपवक्र चार्ट (CRIS अनुभाग स्ट्रिंग दृश्य)' : 'Master Time-Distance Trajectory Chart (CRIS Section String View)'}</span>
           </h3>
           <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-            X-axis: 24-Hour Time Horizon • Y-axis: Bhopal – Itarsi Corridor Stations. Shaded area: Active Maintenance Window.
+            {lang === 'hi' 
+              ? 'X-अक्ष: 24-घंटे का समय क्षितिज • Y-अक्ष: भोपाल-इटारसी कॉरिडोर स्टेशन। छायांकित क्षेत्र: सक्रिय रखरखाव विंडो।' 
+              : 'X-axis: 24-Hour Time Horizon • Y-axis: Bhopal – Itarsi Corridor Stations. Shaded area: Active Maintenance Window.'}
           </p>
         </div>
         <span className="text-xs font-mono bg-blue-100 dark:bg-blue-950/60 text-blue-700 dark:text-blue-300 px-2.5 py-1 rounded border border-blue-300 dark:border-blue-800">
-          Plotting {activeTrains.length} Dynamic Trajectories
+          {lang === 'hi' ? `${activeTrains.length} डायनेमिक ट्रैजेक्टरी प्लॉट किए जा रहे हैं` : `Plotting ${activeTrains.length} Dynamic Trajectories`}
         </span>
       </div>
 
@@ -66,7 +69,7 @@ export default function TimeDistanceChart({
             </g>
           ))}
 
-          {/* DYNAMIC Shaded Corridor Possession Window (Moves when re-slotted) */}
+          {/* BACKGROUND PASS: DRAW SHADED CORRIDOR WINDOW */}
           <rect
             x={timeToX(blockWindow.start)}
             y={yHabibganj}
@@ -79,18 +82,8 @@ export default function TimeDistanceChart({
             strokeDasharray="4 4"
             className="transition-all duration-500"
           />
-          <text
-            x={timeToX((blockWindow.start + blockWindow.end) / 2)}
-            y={(yHabibganj + yItarsi) / 2}
-            fill="#fbbf24"
-            fontSize="11"
-            fontWeight="bold"
-            textAnchor="middle"
-          >
-            🚧 {blockWindow.label}
-          </text>
 
-          {/* Active Train Trajectory Strings */}
+          {/* PASS 1: DRAW ALL TRAIN LINES */}
           {activeTrains.map((train, idx) => {
             const isDN = train.direction === 'DN';
             const xStart = timeToX(train.originTime);
@@ -101,43 +94,65 @@ export default function TimeDistanceChart({
             const strokeColor =
               train.type === 'Vande Bharat' ? '#38bdf8' :
               train.type === 'Shatabdi' ? '#fbbf24' :
-              train.type === 'Freight' ? '#c084fc' : '#34d399';
+              train.type === 'Freight' ? '#94a3b8' : '#34d399';
 
             return (
-              <g key={idx} className="transition-all duration-500">
-                <line
-                  x1={xStart}
-                  y1={yStart}
-                  x2={xEnd}
-                  y2={yEnd}
-                  stroke={strokeColor}
-                  strokeWidth="5"
-                  opacity="0.25"
-                />
-                <line
-                  x1={xStart}
-                  y1={yStart}
-                  x2={xEnd}
-                  y2={yEnd}
-                  stroke={strokeColor}
-                  strokeWidth="2.5"
-                  strokeLinecap="round"
-                />
-                <text
-                  x={(xStart + xEnd) / 2}
-                  y={(yStart + yEnd) / 2 - 5}
-                  fill={strokeColor}
-                  fontSize="10"
-                  fontWeight="bold"
-                  textAnchor="middle"
-                  fontFamily="monospace"
-                  transform={`rotate(${isDN ? 22 : -22} ${(xStart + xEnd) / 2} ${(yStart + yEnd) / 2})`}
-                >
-                  {train.trainNo} {train.name}
-                </text>
+              <g key={`line-${idx}`} className="transition-all duration-500">
+                <line x1={xStart} y1={yStart} x2={xEnd} y2={yEnd} stroke={strokeColor} strokeWidth="5" opacity="0.25" />
+                <line x1={xStart} y1={yStart} x2={xEnd} y2={yEnd} stroke={strokeColor} strokeWidth="2.5" strokeLinecap="round" />
               </g>
             );
           })}
+
+          {/* PASS 2: DRAW ALL TRAIN TEXT LABELS */}
+          {activeTrains.map((train, idx) => {
+            const isDN = train.direction === 'DN';
+            const xStart = timeToX(train.originTime);
+            const xEnd = timeToX(train.destTime);
+            const yStart = isDN ? yBhopal : yItarsi;
+            const yEnd = isDN ? yItarsi : yBhopal;
+
+            const strokeColor =
+              train.type === 'Vande Bharat' ? '#38bdf8' :
+              train.type === 'Shatabdi' ? '#fbbf24' :
+              train.type === 'Freight' ? '#94a3b8' : '#34d399';
+
+            const angleInDegrees = Math.atan2(yEnd - yStart, xEnd - xStart) * (180 / Math.PI);
+
+            const textX = (xStart + xEnd) / 2;
+            const textY = (yStart + yEnd) / 2;
+
+            return (
+              <text
+                key={`text-${idx}`}
+                x={textX}
+                y={textY}
+                dy="-6"
+                fill={strokeColor}
+                fontSize="10"
+                fontWeight="normal"
+                fontFamily="monospace"
+                textAnchor="middle"
+                className="transition-all duration-500"
+                transform={`rotate(${angleInDegrees} ${textX} ${textY})`}
+              >
+                {train.trainNo} {train.name}
+              </text>
+            );
+          })}
+
+          {/* PASS 3: BELOW-GRID PLACEMENT FOR BLOCK LABEL */}
+          <text
+            x={timeToX((blockWindow.start + blockWindow.end) / 2)}
+            y={yItarsi + 18} /* Placed perfectly below the Itarsi grid line, where the red line was drawn! */
+            fill="#fbbf24"
+            fontSize="10"
+            fontWeight="bold"
+            textAnchor="middle"
+            className="transition-all duration-500"
+          >
+            🚧 {blockWindow.label}
+          </text>
         </svg>
       </div>
 
@@ -156,12 +171,12 @@ export default function TimeDistanceChart({
             <span className="text-slate-700 dark:text-slate-300">Mail / Express (P3)</span>
           </span>
           <span className="flex items-center space-x-1.5">
-            <span className="w-3 h-1 rounded bg-[#c084fc]"></span>
-            <span className="text-slate-700 dark:text-slate-300">Freight Rakes (P4)</span>
+            <span className="w-3 h-1 rounded bg-[#94a3b8]"></span>
+            <span className="text-slate-700 dark:text-slate-300">{lang === 'hi' ? 'मालगाड़ी (P4)' : 'Freight Rakes (P4)'}</span>
           </span>
         </div>
         <span className="font-mono text-[11px] text-emerald-600 dark:text-emerald-400 font-semibold">
-          ✓ Headway: Min 15-Min Buffer Dynamically Preserved
+          {lang === 'hi' ? '✓ हेडवे: न्यूनतम 15-मिनट बफर गतिशील रूप से संरक्षित' : '✓ Headway: Min 15-Min Buffer Dynamically Preserved'}
         </span>
       </div>
     </div>

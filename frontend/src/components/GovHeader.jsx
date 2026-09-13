@@ -1,9 +1,33 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 
-export default function GovHeader({ theme, onToggleTheme, textSize, onChangeTextSize }) {
+// Live Clock Widget Component
+function LiveClockWidget() {
+  const [time, setTime] = useState(new Date());
+
+  useEffect(() => {
+    const timer = setInterval(() => setTime(new Date()), 1000);
+    return () => clearInterval(timer);
+  }, []);
+
+  const formattedDate = time.toLocaleDateString('en-GB', {
+    day: '2-digit',
+    month: 'short',
+    year: 'numeric'
+  }).replace(/ /g, '-');
+
+  const formattedTime = time.toTimeString().split(' ')[0];
+
+  return (
+    <div className="flex items-center space-x-1.5 text-xs font-semibold text-slate-300">
+      <span className="text-amber-400">{formattedDate}</span>
+      <span className="text-white">[{formattedTime}]</span>
+    </div>
+  );
+}
+
+export default function GovHeader({ theme, onToggleTheme, textSize, onChangeTextSize, lang, onToggleLang }) {
   return (
     <header className="w-full border-b border-slate-300 dark:border-slate-800 font-sans select-none">
-      {/* Continuous Marquee Animation */}
       <style>{`
         @keyframes marqueeScroll {
           0% { transform: translateX(100%); }
@@ -12,33 +36,52 @@ export default function GovHeader({ theme, onToggleTheme, textSize, onChangeText
         .railway-ticker-track {
           display: inline-flex;
           white-space: nowrap;
-          animation: marqueeScroll 28s linear infinite;
+          /* Changed from 28s to 40s to accommodate the 4 items */
+          animation: marqueeScroll 40s linear infinite; 
         }
         .railway-ticker-track:hover {
           animation-play-state: paused;
         }
       `}</style>
 
-      {/* 1. Top Government Utility Strip */}
-      <div className="bg-[#0b192c] text-slate-200 text-[11px] px-4 sm:px-8 py-1.5 flex flex-wrap items-center justify-between border-b border-blue-900/40">
-        <div className="flex items-center space-x-2">
-          <span className="font-bold text-white tracking-wide">🇮🇳 Government of India</span>
-          <span className="text-slate-500">•</span>
-          <span>Ministry of Railways</span>
-          <span className="bg-blue-600/40 text-blue-200 px-2 py-0.5 rounded text-[10px] font-mono border border-blue-500/30">
-            IR-AIS v2.4
+      {/* 1. Top Government Utility Strip (3-Column Layout) */}
+      <div className="bg-[#0b192c] text-slate-200 text-[11px] px-4 sm:px-8 py-1.5 grid grid-cols-1 md:grid-cols-3 items-center border-b border-blue-900/40">
+        
+        {/* Left: Gov Info */}
+        <div className="flex items-center space-x-2 justify-start">
+          <span className="font-bold text-white tracking-wide">
+            {lang === 'hi' ? '🇮🇳 भारत सरकार' : '🇮🇳 Government of India'}
           </span>
+          <span className="text-slate-500">•</span>
+          <span>{lang === 'hi' ? 'रेल मंत्रालय' : 'Ministry of Railways'}</span>
         </div>
 
-        <div className="flex items-center space-x-4">
-          <span className="hidden sm:inline-flex items-center text-[10px] bg-emerald-900/50 text-emerald-300 px-2 py-0.5 rounded border border-emerald-500/40">
-            <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse mr-1.5"></span>
-            Live SQLite API Mode
+        {/* Middle: PRABANDH Full Form & Live Clock */}
+        <div className="flex flex-col items-center justify-center my-1 md:my-0 text-center">
+          <span className="font-mono font-bold tracking-wider text-emerald-400 text-[11px]">
+            {lang === 'hi' 
+              ? 'प्रबंध (PRABANDH) — प्लेटफॉर्म रिसोर्स एलोकेशन एंड ब्लॉक नेटवर्क डेटा हब' 
+              : 'PRABANDH: Platform for Railway Asset Block Allocation & Network Data Hub'}
           </span>
+          <div className="mt-0.5">
+            <LiveClockWidget />
+          </div>
+        </div>
+
+        {/* Right: Language Switch, Text Size, & Theme Toggle */}
+        <div className="flex items-center space-x-3 justify-end">
+          
+          {/* Language Switch Button */}
+          <button
+            onClick={onToggleLang}
+            className="flex items-center space-x-1 bg-amber-600 hover:bg-amber-500 text-slate-950 font-bold px-2 py-0.5 rounded border border-amber-500 text-[11px] transition cursor-pointer"
+          >
+            <span>🌐 {lang === 'hi' ? 'English' : 'हिंदी'}</span>
+          </button>
 
           {/* Text Size Accessibility */}
           <div className="flex items-center space-x-1 text-[11px] bg-slate-800 px-2 py-0.5 rounded border border-slate-700">
-            <span className="text-slate-400 mr-1 text-[10px]">Text Size:</span>
+            <span className="text-slate-400 mr-1 text-[10px]">{lang === 'hi' ? 'फ़ॉन्ट:' : 'Text:'}</span>
             <button onClick={() => onChangeTextSize('sm')} className={`px-1 rounded hover:text-white ${textSize === 'sm' ? 'bg-blue-600 text-white' : 'text-slate-300'}`}>A-</button>
             <button onClick={() => onChangeTextSize('base')} className={`px-1 rounded hover:text-white ${textSize === 'base' ? 'bg-blue-600 text-white' : 'text-slate-300'}`}>A</button>
             <button onClick={() => onChangeTextSize('lg')} className={`px-1 rounded hover:text-white ${textSize === 'lg' ? 'bg-blue-600 text-white' : 'text-slate-300'}`}>A+</button>
@@ -49,16 +92,15 @@ export default function GovHeader({ theme, onToggleTheme, textSize, onChangeText
             onClick={onToggleTheme}
             className="flex items-center space-x-1 bg-slate-800 hover:bg-slate-700 px-2.5 py-0.5 rounded border border-slate-700 text-white text-[11px] transition cursor-pointer"
           >
-            {theme === 'dark' ? <span>☀️ Light Mode</span> : <span>🌙 Dark Mode</span>}
+            {theme === 'light' ? <span>🌙 Dark</span> : <span>☀️ Light</span>}
           </button>
         </div>
       </div>
 
       {/* 2. Main Official Railway Branding Banner */}
       <div className="bg-white dark:bg-slate-900 px-4 sm:px-8 py-3 transition-colors">
-        <div className="max-w-7xl mx-auto flex flex-col md:flex-row items-center justify-between gap-4">
+        <div className="max-w-7xl mx-auto flex items-center justify-between gap-4">
           
-          {/* Left: National Emblem from public/emblem.webp */}
           <div className="flex items-center space-x-4">
             <div className="flex-shrink-0 flex items-center justify-center">
               <img
@@ -71,55 +113,26 @@ export default function GovHeader({ theme, onToggleTheme, textSize, onChangeText
             <div>
               <div className="flex items-center space-x-2">
                 <h1 className="text-2xl sm:text-3xl font-serif font-extrabold text-[#8b1e0f] dark:text-amber-500 tracking-wider">
-                  INDIAN RAILWAYS
+                  {lang === 'hi' ? 'भारतीय रेल' : 'INDIAN RAILWAYS'}
                 </h1>
-                <span className="bg-blue-700 text-white text-xs px-2 py-0.5 rounded font-mono font-bold tracking-tight">
-                  IR-AIS v2.4
+                <span className="bg-teal-700 text-white text-xs px-2 py-0.5 rounded font-mono font-bold tracking-tight">
+                  PRABANDH
                 </span>
               </div>
               <p className="text-xs text-slate-700 dark:text-slate-300 font-medium mt-0.5">
-                Block Request & AI Slotting Engine • भारतीय रेल ब्लॉक अनुरोध व कृत्रिम मेधा स्लॉटिंग प्रणाली
+                {lang === 'hi' 
+                  ? 'ब्लॉक अनुरोध और कृत्रिम मेधा स्लॉटिंग प्रणाली • Block Request & AI Slotting Engine' 
+                  : 'Block Request & AI Slotting Engine • भारतीय रेल ब्लॉक अनुरोध व कृत्रिम मेधा स्लॉटिंग प्रणाली'}
               </p>
             </div>
           </div>
 
-          {/* Right: G20, 75 Azadi & Blue Railway Logo */}
           <div className="flex items-center space-x-5 sm:space-x-6 flex-shrink-0">
-            {/* G20 Bharat */}
-            <div className="flex flex-col items-center justify-center text-center select-none">
-              <div className="flex items-center space-x-1">
-                <span className="text-xl sm:text-2xl font-black text-[#f97316] tracking-tighter leading-none">G2</span>
-                <div className="w-5 h-5 rounded-full bg-gradient-to-b from-[#0284c7] via-[#38bdf8] to-[#ea580c] flex items-center justify-center shadow-inner">
-                  <span className="text-[9px] text-white font-bold">🌐</span>
-                </div>
-              </div>
-              <span className="text-[7px] font-extrabold tracking-wider text-slate-800 dark:text-slate-200 uppercase mt-0.5">
-                भारत 2023 INDIA
-              </span>
-              <span className="text-[5px] text-slate-500 dark:text-slate-400 uppercase tracking-tight">
-                ONE EARTH • ONE FAMILY
-              </span>
-            </div>
-
-            {/* 75 Azadi Ka Amrit Mahotsav */}
-            <div className="flex flex-col items-center justify-center text-center select-none">
-              <div className="relative leading-none">
-                <div className="absolute -top-1.5 left-1/2 -translate-x-1/2 w-8 h-1.5 flex flex-col justify-between">
-                  <div className="h-0.5 bg-[#ff9933] rounded-full"></div>
-                  <div className="h-0.5 bg-white rounded-full"></div>
-                  <div className="h-0.5 bg-[#138808] rounded-full"></div>
-                </div>
-                <span className="text-xl sm:text-2xl font-black text-slate-700 dark:text-slate-300 tracking-tight">75</span>
-              </div>
-              <span className="text-[8px] font-bold text-slate-800 dark:text-slate-200 leading-tight mt-0.5">
-                आज़ादी का
-              </span>
-              <span className="text-[7px] text-[#0284c7] dark:text-blue-400 font-semibold leading-none">
-                अमृत महोत्सव
-              </span>
-            </div>
-
-            {/* Blue Railway Logo from public/railway-logo.webp */}
+            <img 
+              src="/brics-logo-lg.png.jpg" 
+              alt="BRICS India 2026" 
+              className="h-12 w-auto object-contain select-none" 
+            />
             <div className="flex items-center justify-center select-none">
               <img
                 src="/railway-logo.webp"
@@ -135,33 +148,40 @@ export default function GovHeader({ theme, onToggleTheme, textSize, onChangeText
       {/* 3. Live Animated Corridor Marquee / Ticker Bar */}
       <div className="bg-[#1b2a4a] text-white text-xs flex items-stretch overflow-hidden border-t border-b border-blue-900/60 shadow-inner h-9">
         <div className="bg-[#d97706] text-slate-950 font-bold px-3 py-2 flex items-center uppercase text-[11px] tracking-wider whitespace-nowrap z-10 shadow-md">
-          CORRIDOR MONITOR
+          {lang === 'hi' ? 'कॉरिडोर मॉनिटर' : 'CORRIDOR MONITOR'}
         </div>
-        <div className="bg-slate-900 px-3 py-2 text-rose-400 font-bold text-[11px] whitespace-nowrap flex items-center border-r border-slate-700 z-10 shadow-md">
-          conflict review.
+        <div className="bg-slate-900 px-3 py-2 text-rose-400 font-bold text-[11px] uppercase whitespace-nowrap flex items-center border-r border-slate-700 z-10 shadow-md">
+          {lang === 'hi' ? 'टकराव समीक्षा' : 'CONFLICT REVIEW'}
         </div>
 
         <div className="flex-1 overflow-hidden relative flex items-center">
           <div className="railway-ticker-track items-center space-x-8 text-[11px] text-slate-200 cursor-pointer">
+            {/* Item 1 */}
             <span>
-              <strong className="text-amber-400">● Bhopal – Itarsi Section:</strong> Power Block Active (25kV OHE isolation verified).
+              <strong className="text-amber-400">{lang === 'hi' ? '● भोपाल - इटारसी सेक्शन:' : '● Bhopal – Itarsi Section:'}</strong> {lang === 'hi' ? 'पावर ब्लॉक सक्रिय (25kV OHE आइसोलेशन सत्यापित)।' : 'Power Block Active (25kV OHE isolation verified).'}
             </span>
+
             <span className="text-slate-400">|</span>
+            
+            {/* Item 2 */}
             <span>
-              <strong className="text-blue-400">⚡ AI Slotting Engine:</strong> 94.2% Corridor line efficiency index maintained.
+              <strong className="text-blue-400">{lang === 'hi' ? 'AI स्लॉटिंग इंजन:' : 'AI Slotting Engine:'}</strong> {lang === 'hi' ? '94.2% कॉरिडोर लाइन दक्षता सूचकांक बनाए रखा गया।' : '94.2% Corridor line efficiency index maintained.'}
             </span>
+
             <span className="text-slate-400">|</span>
+            
+            {/* Item 3 */}
             <span>
-              <strong className="text-emerald-400">✓ Headway Margin:</strong> Minimum 15 mins safety buffer strictly enforced.
+              <strong className="text-emerald-400">{lang === 'hi' ? '● बीना - झाँसी सेक्शन:' : '● Bina – Jhansi Section:'}</strong> {lang === 'hi' ? 'इलेक्ट्रॉनिक इंटरलॉकिंग अंशांकन प्रगति पर है।' : 'Electronic Interlocking calibration in progress.'}
             </span>
+
             <span className="text-slate-400">|</span>
+            
+            {/* Item 4 - Updated from rose-400 to blue-400 */}
             <span>
-              <strong className="text-amber-400">● Bina – Jhansi Section:</strong> Normal Operations (MPS 110 km/h).
+              <strong className="text-blue-400">{lang === 'hi' ? '● सतर्कता आदेश:' : '● Caution Order:'}</strong> {lang === 'hi' ? 'नागपुर - इटारसी डाउन लाइन पर 20 किमी/घंटा TSR सक्रिय है।' : 'TSR 20 km/h active on Nagpur - Itarsi Down Line.'}
             </span>
-            <span className="text-slate-400">|</span>
-            <span>
-              <strong className="text-purple-400">⚙️ Shadow Block Engine:</strong> Auto-bundling 2 pending possessions on Down Main Line.
-            </span>
+
           </div>
         </div>
       </div>

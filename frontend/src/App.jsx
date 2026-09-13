@@ -8,11 +8,13 @@ import MasterRegistry from './components/MasterRegistry';
 import TimeDistanceChart from './components/TimeDistanceChart';
 import DisruptionSimulator from './components/DisruptionSimulator';
 import COATrafficManager from './components/COATrafficManager';
+import ReportsAnalytics from './components/ReportsAnalytics'; 
 import { initialStats } from './data/mockData';
 import { api, setAuthToken } from './api';
 
 export default function App() {
   const [theme, setTheme] = useState('light');
+  const [lang, setLang] = useState('en'); 
   const [textSize, setTextSize] = useState('base');
   const [user, setUser] = useState(null);
   const [activeTab, setActiveTab] = useState('dashboard');
@@ -30,7 +32,7 @@ export default function App() {
   // Shared Timetable State for COA Ingestion & String Chart
   const [trains, setTrains] = useState([]);
 
-   useEffect(() => {
+  useEffect(() => {
     const root = document.documentElement;
     if (theme === 'dark') {
       root.classList.add('dark');
@@ -69,25 +71,34 @@ export default function App() {
 
   const handleLoginSuccess = (officer) => {
     setUser(officer);
-    if (officer.portalType === 'APPROVER') {
+    if (officer.portalType === 'APPROVER' || officer.portalType === 'COA') {
       setActiveTab('dashboard');
-    } else if (officer.portalType === 'COA') {
-      setActiveTab('timetable-feed');
     } else {
       setActiveTab('requisition');
     }
   };
 
-    const handleExecuteShadowMerge = async (conflictId) => {
+  // --- BULLETPROOF SHADOW MERGE HANDLER ---
+  const handleExecuteShadowMerge = async (targetId) => {
     try {
-      await api.shadowMerge(conflictId);
+      // Automatically map Block IDs (e.g. REQ-...) to their matching Conflict ID if needed
+      let actualConflictId = targetId;
+      const matchingConflict = conflicts.find(c => 
+        c.id === targetId || c.block_id_1 === targetId || c.block_id_2 === targetId || c.blockId === targetId
+      );
+      if (matchingConflict) {
+        actualConflictId = matchingConflict.id;
+      }
+
+      await api.shadowMerge(actualConflictId);
       await fetchAllData();
       alert("⚡ AI Shadow Block Executed! Possessions merged into one unified window.");
     } catch (err) {
       alert(`Shadow merge failed: ${err.message}`);
     }
   };
-    const handleSanctionBlock = async (blockId) => {
+
+  const handleSanctionBlock = async (blockId) => {
     try {
       const updatedBlock = await api.sanctionBlock(blockId);
       setBlocks(prev => prev.map(b => (b.id === blockId ? updatedBlock : b)));
@@ -102,16 +113,34 @@ export default function App() {
     }
   };
 
-    // Called when Controller clicks "Apply AI Re-Slotted Plan to Live Schedule"
+  // --- NEW: MARK BLOCK AS COMPLETED ---
+  const handleMarkComplete = async (blockId) => {
+    try {
+      const updatedBlock = await api.completeBlock(blockId);
+      
+      // Update the local state so the UI changes instantly without refreshing
+      setBlocks(prev => prev.map(b => (b.id === blockId ? updatedBlock : b)));
+      
+      // Update stats: move it out of active blocks
+      setStats(prev => ({
+        ...prev,
+        active_blocks_today: Math.max(0, prev.active_blocks_today - 1)
+      }));
+      
+      alert(`Block ${blockId} marked as COMPLETED. Track handed back to operations!`);
+    } catch (err) {
+      alert(`Failed to complete block: ${err.message}`);
+    }
+  };
+
+  // Called when Controller clicks "Apply AI Re-Slotted Plan to Live Schedule"
   const handleApplyReSlot = async ({ trainNo, delayMinutes, startHour, endHour, timeWindowStr, affected_block_id }) => {
-    // 1. Shift the maintenance window on the graph
     setBlockWindow({
       start: startHour,
       end: endHour,
       label: `TRAIN #${trainNo} SHIFTED (${timeWindowStr})`
     });
 
-    // 2. Shift the delayed train trajectory line on the graph
     setTrains(prev => prev.map(t => {
       if (t.trainNo === trainNo) {
         const addedHours = delayMinutes / 60;
@@ -125,8 +154,6 @@ export default function App() {
       return t;
     }));
 
-    // 3. Re-fetch blocks/conflicts from the backend (the solver already updated
-    // the affected block's window server-side, if any)
     await fetchAllData();
 
     alert(
@@ -137,7 +164,7 @@ export default function App() {
     setActiveTab('strings');
   };
 
-    const handleNewDemandSubmit = async (newDemand) => {
+  const handleNewDemandSubmit = async (newDemand) => {
     try {
       const createdBlock = await api.createBlock(newDemand);
       await fetchAllData();
@@ -151,6 +178,7 @@ export default function App() {
   const isApprover = user?.portalType === 'APPROVER';
   const isCOA = user?.portalType === 'COA';
   const isDept = user?.portalType === 'DEPT';
+  const isGlobalAdmin = isApprover || isCOA;
 
   return (
     <div className={`min-h-screen ${textSize === 'sm' ? 'text-xs' : textSize === 'lg' ? 'text-base' : 'text-sm'} bg-slate-100 dark:bg-[#080d1a] text-slate-900 dark:text-slate-100 font-sans flex flex-col transition-colors duration-200`}>
@@ -160,9 +188,11 @@ export default function App() {
         <>
           <GovHeader
             theme={theme}
-            onToggleTheme={() => setTheme(prev => prev === 'light' ? 'dark' : 'light')}
+            onToggleTheme={() => setTheme(prev => (prev === 'light' ? 'dark' : 'light'))}
             textSize={textSize}
             onChangeTextSize={(sz) => setTextSize(sz)}
+            lang={lang}
+            onToggleLang={() => setLang(prev => (prev === 'en' ? 'hi' : 'en'))}
           />
 
           <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
@@ -172,47 +202,50 @@ export default function App() {
               onOpenNewRequest={() => setActiveTab('requisition')}
               onOpenTimetableSync={() => setActiveTab('timetable-feed')}
               onOpenSanctions={() => setActiveTab('registry')}
+              lang={lang}
             />
 
             {/* Role-Specific Navigation */}
             <div className="flex flex-wrap gap-1 bg-white dark:bg-slate-900 p-1.5 rounded-xl border border-slate-300 dark:border-slate-800 shadow-sm">
-              {(isApprover || isCOA) && (
+              {isGlobalAdmin && (
                 <button
                   onClick={() => setActiveTab('dashboard')}
                   className={`px-4 py-2 text-xs font-bold rounded-lg transition cursor-pointer ${
-                    activeTab === 'dashboard' ? 'bg-emerald-700 text-white shadow' : 'text-slate-600 dark:text-slate-400'
+                    activeTab === 'dashboard' ? 'bg-emerald-700 text-white shadow' : 'text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-800'
                   }`}
                 >
-                  Operations Command
+                  {lang === 'hi' ? 'ऑपरेशंस कमांड' : 'Operations Command'}
                 </button>
               )}
 
               <button
                 onClick={() => setActiveTab('registry')}
                 className={`px-4 py-2 text-xs font-bold rounded-lg transition cursor-pointer ${
-                  activeTab === 'registry' ? 'bg-blue-600 text-white shadow' : 'text-slate-600 dark:text-slate-400'
+                  activeTab === 'registry' ? 'bg-blue-600 text-white shadow' : 'text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-800'
                 }`}
               >
-                {isApprover ? 'Master Registry & Sanctions' : 'Master Registry'} ({blocks.length})
+                {isApprover 
+                  ? (lang === 'hi' ? 'मास्टर रजिस्ट्री और प्रतिबंध' : 'Master Registry & Sanctions') 
+                  : (lang === 'hi' ? 'मास्टर रजिस्ट्री' : 'Master Registry')} ({blocks.length})
               </button>
 
               <button
                 onClick={() => setActiveTab('strings')}
                 className={`px-4 py-2 text-xs font-bold rounded-lg transition cursor-pointer ${
-                  activeTab === 'strings' ? 'bg-blue-600 text-white shadow' : 'text-slate-600 dark:text-slate-400'
+                  activeTab === 'strings' ? 'bg-blue-600 text-white shadow' : 'text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-800'
                 }`}
               >
-                COA String Chart ({trains.length})
+                {lang === 'hi' ? 'COA स्ट्रिंग चार्ट' : 'COA String Chart'} ({trains.length})
               </button>
 
               {isApprover && (
                 <button
                   onClick={() => setActiveTab('simulator')}
                   className={`px-4 py-2 text-xs font-bold rounded-lg transition cursor-pointer ${
-                    activeTab === 'simulator' ? 'bg-purple-600 text-white shadow' : 'text-purple-600 dark:text-purple-400'
+                    activeTab === 'simulator' ? 'bg-blue-700 text-white shadow' : 'text-blue-700 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-slate-800'
                   }`}
                 >
-                  ⚡ AI What-If Engine
+                  {lang === 'hi' ? 'AI What-If इंजन' : 'AI What-If Engine'}
                 </button>
               )}
 
@@ -220,10 +253,10 @@ export default function App() {
                 <button
                   onClick={() => setActiveTab('timetable-feed')}
                   className={`px-4 py-2 text-xs font-bold rounded-lg transition cursor-pointer ${
-                    activeTab === 'timetable-feed' ? 'bg-purple-600 text-white shadow' : 'text-purple-600 dark:text-purple-400'
+                    activeTab === 'timetable-feed' ? 'bg-blue-800 text-white shadow' : 'text-blue-800 dark:text-blue-400 hover:bg-slate-200 dark:hover:bg-slate-800'
                   }`}
                 >
-                  📊 Timetable & Goods Feed (COA)
+                  {lang === 'hi' ? 'समय सारणी और माल ढुलाई फ़ीड (COA)' : 'Timetable & Goods Feed (COA)'}
                 </button>
               )}
 
@@ -231,20 +264,33 @@ export default function App() {
                 <button
                   onClick={() => setActiveTab('requisition')}
                   className={`px-4 py-2 text-xs font-bold rounded-lg transition cursor-pointer ${
-                    activeTab === 'requisition' ? 'bg-blue-600 text-white shadow' : 'text-slate-600 dark:text-slate-400'
+                    activeTab === 'requisition' ? 'bg-blue-600 text-white shadow' : 'text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-800'
                   }`}
                 >
-                  + Lodge Block Request ({user.initials})
+                  {lang === 'hi' ? '+ ब्लॉक अनुरोध दर्ज करें' : '+ Lodge Block Request'} ({user.initials})
+                </button>
+              )}
+
+              {(isApprover || isDept || isCOA) && (
+                <button
+                  onClick={() => setActiveTab('reports')}
+                  className={`px-4 py-2 text-xs font-bold rounded-lg transition cursor-pointer ${
+                    activeTab === 'reports' ? 'bg-blue-600 text-white shadow' : 'text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-800'
+                  }`}
+                >
+                  {lang === 'hi' ? 'रिपोर्ट और एनालिटिक्स' : 'Reports & Analytics'}
                 </button>
               )}
             </div>
 
             {/* Tab Views */}
-            {activeTab === 'dashboard' && (
+            {activeTab === 'dashboard' && isGlobalAdmin && (
               <Dashboard
                 stats={stats}
                 conflicts={conflicts}
                 onExecuteShadowMerge={handleExecuteShadowMerge}
+                theme={theme}
+                lang={lang}
               />
             )}
 
@@ -252,18 +298,31 @@ export default function App() {
               <MasterRegistry
                 blocks={blocks}
                 conflicts={conflicts}
+                user={user}
                 onSanctionBlock={isApprover ? handleSanctionBlock : null}
                 onExecuteShadowMerge={handleExecuteShadowMerge}
+                onMarkComplete={handleMarkComplete}
                 isApprover={isApprover}
+                theme={theme}
+                lang={lang}
               />
             )}
 
             {activeTab === 'strings' && (
-              <TimeDistanceChart trains={trains} blockWindow={blockWindow} />
+              <TimeDistanceChart 
+                trains={trains} 
+                blockWindow={blockWindow} 
+                theme={theme} 
+                lang={lang} 
+              />
             )}
 
             {activeTab === 'simulator' && isApprover && (
-              <DisruptionSimulator onApplyReSlot={handleApplyReSlot} />
+              <DisruptionSimulator 
+                onApplyReSlot={handleApplyReSlot} 
+                theme={theme} 
+                lang={lang} 
+              />
             )}
 
             {activeTab === 'requisition' && isDept && (
@@ -271,6 +330,8 @@ export default function App() {
                 currentUser={user}
                 onSubmitSuccess={handleNewDemandSubmit}
                 onCancel={() => setActiveTab('registry')}
+                theme={theme}
+                lang={lang}
               />
             )}
 
@@ -278,6 +339,17 @@ export default function App() {
               <COATrafficManager
                 trains={trains}
                 onUpdateTrains={(newTrains) => setTrains(newTrains)}
+                theme={theme}
+                lang={lang}
+              />
+            )}
+
+            {activeTab === 'reports' && (
+              <ReportsAnalytics 
+                currentUser={user} 
+                blocks={blocks} 
+                theme={theme}
+                lang={lang}
               />
             )}
           </main>

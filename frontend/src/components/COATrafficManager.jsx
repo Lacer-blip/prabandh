@@ -5,9 +5,6 @@ export default function COATrafficManager({ trains, onUpdateTrains }) {
   const [statusMsg, setStatusMsg] = useState('');
 
   // Built-in sample WTT dataset for instant 1-click loading during demos.
-  // Builds a real CSV matching the backend's expected format and uploads it
-  // through the real ingestion endpoint, so this button exercises the actual
-  // pipeline instead of faking the result client-side.
   const loadSampleWTT = async () => {
     const sampleCsv = [
       'train_number,train_name,category,direction,origin_station,origin_time_decimal,dest_station,dest_time_decimal',
@@ -30,7 +27,7 @@ export default function COATrafficManager({ trains, onUpdateTrains }) {
     }
   };
 
-    const handleFileUpload = async (e) => {
+  const handleFileUpload = async (e) => {
     const file = e.target.files[0];
     if (!file) return;
 
@@ -53,7 +50,6 @@ export default function COATrafficManager({ trains, onUpdateTrains }) {
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center border-b border-slate-200 dark:border-slate-800 pb-3 gap-2">
         <div>
           <h3 className="text-base font-bold text-slate-900 dark:text-white flex items-center space-x-2">
-            <span>📊</span>
             <span>COA Traffic Ingestion Gate • Working Time Table (WTT) & Goods Feed</span>
           </h3>
           <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
@@ -62,9 +58,9 @@ export default function COATrafficManager({ trains, onUpdateTrains }) {
         </div>
         <button
           onClick={loadSampleWTT}
-          className="px-3.5 py-1.5 bg-purple-600 hover:bg-purple-700 text-white font-bold text-xs rounded-lg transition cursor-pointer shadow"
+          className="px-3.5 py-1.5 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs rounded-lg transition cursor-pointer shadow"
         >
-          ⚡ Load Sample WTT (Bhopal – Itarsi)
+          Load Sample WTT (Bhopal – Itarsi)
         </button>
       </div>
 
@@ -125,7 +121,7 @@ export default function COATrafficManager({ trains, onUpdateTrains }) {
           </div>
           <button
             onClick={() => alert("Goods slots locked into AI Constraint Registry! Timetable trajectories updated.")}
-            className="w-full py-1.5 bg-purple-600 hover:bg-purple-700 text-white font-bold text-xs rounded transition cursor-pointer"
+            className="w-full py-1.5 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs rounded transition cursor-pointer"
           >
             Lock Freight Paths into Solver
           </button>
@@ -136,7 +132,7 @@ export default function COATrafficManager({ trains, onUpdateTrains }) {
       <div className="border border-slate-200 dark:border-slate-800 rounded-xl overflow-hidden">
         <div className="bg-slate-100 dark:bg-slate-800 px-4 py-2 font-bold text-xs text-slate-700 dark:text-slate-300 flex justify-between">
           <span>Active Ingested Trajectories ({trains.length} Trains)</span>
-          <span className="text-[11px] text-purple-600 dark:text-purple-400 font-mono">Live In Solver Memory</span>
+          <span className="text-[11px] text-blue-600 dark:text-blue-400 font-mono">Live In Solver Memory</span>
         </div>
         <div className="overflow-x-auto">
           <table className="w-full text-left text-xs">

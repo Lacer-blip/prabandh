@@ -71,7 +71,7 @@ export default function BlockRequestForm({ currentUser, onSubmitSuccess, onCance
         <div>
           <div className="flex items-center space-x-2">
             <span className={`text-xs font-bold px-2.5 py-0.5 rounded text-white ${
-              dept === 'TMS' ? 'bg-amber-600' : dept === 'TDMS' ? 'bg-blue-600' : 'bg-purple-600'
+              dept === 'TMS' ? 'bg-amber-600' : 'bg-blue-800'
             }`}>
               {dept} REQUISITION
             </span>
@@ -296,8 +296,8 @@ export default function BlockRequestForm({ currentUser, onSubmitSuccess, onCance
 
         {/* --- DYNAMIC SECTION: SMMS (Signal & Telecom) --- */}
         {dept === 'SMMS' && (
-          <div className="bg-purple-500/10 border border-purple-500/30 rounded-xl p-4 space-y-4">
-            <h3 className="text-xs font-bold text-purple-600 dark:text-purple-400 uppercase tracking-wider">
+          <div className="bg-blue-800/10 border border-blue-800/30 rounded-xl p-4 space-y-4">
+            <h3 className="text-xs font-bold text-blue-800 dark:text-blue-400 uppercase tracking-wider">
               📡 SMMS Signal Interlocking & Disconnection Notice
             </h3>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">

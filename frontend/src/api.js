@@ -28,9 +28,23 @@ export const api = {
     request("/blocks", { method: "POST", body: JSON.stringify(payload) }),
   sanctionBlock: (blockId) =>
     request(`/blocks/${blockId}/sanction`, { method: "POST" }),
+    
+  // --- NEW: Mark block as completed by department ---
+  completeBlock: (blockId) =>
+    request(`/blocks/${blockId}/complete`, { method: "POST" }),
+
   getConflicts: () => request("/conflicts"),
-  shadowMerge: (conflictId) =>
-    request(`/conflicts/${conflictId}/shadow-merge`, { method: "POST" }),
+  
+  // --- UPDATED SMART SHADOW MERGE ---
+  shadowMerge: async (conflictOrBlockId) => {
+    try {
+      return await request(`/conflicts/${conflictOrBlockId}/shadow-merge`, { method: "POST" });
+    } catch (err) {
+      // Fallback: If backend expects a block ID instead of a conflict ID, try this route
+      return await request(`/blocks/${conflictOrBlockId}/shadow-merge`, { method: "POST" });
+    }
+  },
+
   getTrains: () => request("/trains"),
   uploadTimetable: (file) => {
     const formData = new FormData();
