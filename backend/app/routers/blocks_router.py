@@ -128,3 +128,24 @@ def sanction_block(
     db.refresh(block)
 
     return block
+
+@router.post("/blocks/{block_id}/complete", response_model=BlockOut)
+def complete_block(
+    block_id: str,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    if current_user.role not in ("DEPT_TMS", "DEPT_TDMS", "DEPT_SMMS") and current_user.portalType != "DEPT":
+        raise HTTPException(403, "Only department users can mark work as completed")
+
+    block = db.get(Block, block_id)
+    if not block:
+        raise HTTPException(404, "Block not found")
+
+    if block.status != "APPROVED":
+        raise HTTPException(400, f"Cannot complete a block with status '{block.status}' — only APPROVED blocks can be marked complete")
+
+    block.status = "COMPLETED"
+    db.commit()
+    db.refresh(block)
+    return block
