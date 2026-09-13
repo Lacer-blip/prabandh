@@ -12,6 +12,9 @@ import ReportsAnalytics from './components/ReportsAnalytics';
 import { initialStats } from './data/mockData';
 import { api, setAuthToken } from './api';
 
+// 1. Import Toaster and toast
+import toast, { Toaster } from 'react-hot-toast';
+
 export default function App() {
   const [theme, setTheme] = useState('light');
   const [lang, setLang] = useState('en'); 
@@ -21,6 +24,9 @@ export default function App() {
   const [stats, setStats] = useState(initialStats);
   const [conflicts, setConflicts] = useState([]);
   const [blocks, setBlocks] = useState([]);
+  
+  // 2. Add loading state to prevent double-clicks
+  const [isProcessing, setIsProcessing] = useState(false);
 
   // Dynamic maintenance block window plotted on string chart
   const [blockWindow, setBlockWindow] = useState({
@@ -71,6 +77,7 @@ export default function App() {
 
   const handleLoginSuccess = (officer) => {
     setUser(officer);
+    toast.success(`Welcome, ${officer.name}`);
     if (officer.portalType === 'APPROVER' || officer.portalType === 'COA') {
       setActiveTab('dashboard');
     } else {
@@ -80,8 +87,8 @@ export default function App() {
 
   // --- BULLETPROOF SHADOW MERGE HANDLER ---
   const handleExecuteShadowMerge = async (targetId) => {
+    const toastId = toast.loading('Executing AI Shadow Bundle...');
     try {
-      // Automatically map Block IDs (e.g. REQ-...) to their matching Conflict ID if needed
       let actualConflictId = targetId;
       const matchingConflict = conflicts.find(c => 
         c.id === targetId || c.block_id_1 === targetId || c.block_id_2 === targetId || c.blockId === targetId
@@ -92,13 +99,14 @@ export default function App() {
 
       await api.shadowMerge(actualConflictId);
       await fetchAllData();
-      alert("⚡ AI Shadow Block Executed! Possessions merged into one unified window.");
+      toast.success("⚡ AI Shadow Block Executed! Possessions merged.", { id: toastId });
     } catch (err) {
-      alert(`Shadow merge failed: ${err.message}`);
+      toast.error(`Shadow merge failed: ${err.message}`, { id: toastId });
     }
   };
 
   const handleSanctionBlock = async (blockId) => {
+    const toastId = toast.loading('Generating Private Number...');
     try {
       const updatedBlock = await api.sanctionBlock(blockId);
       setBlocks(prev => prev.map(b => (b.id === blockId ? updatedBlock : b)));
@@ -107,14 +115,17 @@ export default function App() {
         pending_approvals: Math.max(0, prev.pending_approvals - 1),
         active_blocks_today: prev.active_blocks_today + 1
       }));
-      alert(`Block ${blockId} Sanctioned! Section Controller Private Number: ${updatedBlock.private_number}`);
+      toast.success(`Sanctioned! PN: ${updatedBlock.private_number}`, { id: toastId });
     } catch (err) {
-      alert(`Sanction failed: ${err.message}`);
+      toast.error(`Sanction failed: ${err.message}`, { id: toastId });
     }
   };
 
-  // --- NEW: MARK BLOCK AS COMPLETED ---
+  // --- UPDATED: MARK BLOCK AS COMPLETED ---
   const handleMarkComplete = async (blockId) => {
+    setIsProcessing(true);
+    const toastId = toast.loading('Handing back track to operations...');
+    
     try {
       const updatedBlock = await api.completeBlock(blockId);
       
@@ -127,9 +138,11 @@ export default function App() {
         active_blocks_today: Math.max(0, prev.active_blocks_today - 1)
       }));
       
-      alert(`Block ${blockId} marked as COMPLETED. Track handed back to operations!`);
+      toast.success(`Block ${blockId} marked as COMPLETED!`, { id: toastId });
     } catch (err) {
-      alert(`Failed to complete block: ${err.message}`);
+      toast.error(`Failed to complete: ${err.message}`, { id: toastId });
+    } finally {
+      setIsProcessing(false);
     }
   };
 
@@ -156,22 +169,23 @@ export default function App() {
 
     await fetchAllData();
 
-    alert(
+    toast.success(
       affected_block_id
-        ? `✓ AI Solution Applied Live!\n• Block ${affected_block_id} re-slotted to ${timeWindowStr}\n• Train #${trainNo} shifted by +${delayMinutes} mins\nSwitching to COA String Chart...`
-        : `✓ Simulation Applied!\n• Train #${trainNo} shifted by +${delayMinutes} mins\n• No maintenance block was affected\nSwitching to COA String Chart...`
+        ? `AI Solution Applied Live! Switching to String Chart...`
+        : `Simulation Applied! Switching to String Chart...`
     );
     setActiveTab('strings');
   };
 
   const handleNewDemandSubmit = async (newDemand) => {
+    const toastId = toast.loading('Lodging requisition...');
     try {
       const createdBlock = await api.createBlock(newDemand);
       await fetchAllData();
-      alert(`Requisition ${createdBlock.id} successfully lodged into Master Registry!`);
+      toast.success(`Requisition ${createdBlock.id} successfully lodged!`, { id: toastId });
       setActiveTab('registry');
     } catch (err) {
-      alert(`Failed to submit requisition: ${err.message}`);
+      toast.error(`Failed to submit: ${err.message}`, { id: toastId });
     }
   };
 
@@ -182,6 +196,19 @@ export default function App() {
 
   return (
     <div className={`min-h-screen ${textSize === 'sm' ? 'text-xs' : textSize === 'lg' ? 'text-base' : 'text-sm'} bg-slate-100 dark:bg-[#080d1a] text-slate-900 dark:text-slate-100 font-sans flex flex-col transition-colors duration-200`}>
+      {/* 3. Drop the Toaster in here! */}
+      <Toaster 
+        position="top-right" 
+        toastOptions={{
+          className: 'dark:bg-slate-800 dark:text-white',
+          style: {
+            background: theme === 'dark' ? '#1e293b' : '#fff',
+            color: theme === 'dark' ? '#fff' : '#334155',
+            fontSize: '14px'
+          }
+        }} 
+      />
+
       {!user ? (
         <LoginPortal onLoginSuccess={handleLoginSuccess} />
       ) : (
@@ -198,7 +225,11 @@ export default function App() {
           <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
             <UserSessionCard
               user={user}
-              onSignOut={() => { setAuthToken(null); setUser(null); }}
+              onSignOut={() => { 
+                setAuthToken(null); 
+                setUser(null); 
+                toast('Signed out successfully', { icon: '👋' }); 
+              }}
               onOpenNewRequest={() => setActiveTab('requisition')}
               onOpenTimetableSync={() => setActiveTab('timetable-feed')}
               onOpenSanctions={() => setActiveTab('registry')}
@@ -302,6 +333,7 @@ export default function App() {
                 onSanctionBlock={isApprover ? handleSanctionBlock : null}
                 onExecuteShadowMerge={handleExecuteShadowMerge}
                 onMarkComplete={handleMarkComplete}
+                isProcessing={isProcessing} /* 4. Pass down processing state! */
                 isApprover={isApprover}
                 theme={theme}
                 lang={lang}

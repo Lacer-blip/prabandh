@@ -3,11 +3,12 @@ import React, { useState } from 'react';
 export default function MasterRegistry({ 
   blocks = [], 
   conflicts = [],
-  user, // <-- ADDED
+  user,
   onSanctionBlock, 
   onExecuteShadowMerge, 
-  onMarkComplete, // <-- ADDED
+  onMarkComplete,
   isApprover = false,
+  isProcessing = false, // <-- ADDED: Receives the loading state from App.jsx
   lang = 'en' 
 }) {
   const [filter, setFilter] = useState('ALL'); // 'ALL' | 'CONFLICT' | 'PENDING' | 'APPROVED'
@@ -97,7 +98,7 @@ export default function MasterRegistry({
               const isPending = statusStr === 'PENDING_SANCTION';
               const isApproved = statusStr.includes('APPROVED');
               const isShadow = statusStr.includes('SHADOW');
-              const isCompleted = statusStr === 'COMPLETED'; // <-- ADDED
+              const isCompleted = statusStr === 'COMPLETED';
 
               const hasPowerCut =
                 b?.power_cut === true ||
@@ -187,7 +188,6 @@ export default function MasterRegistry({
                       </div>
                     )}
 
-                    {/* NEW: Completed Badge */}
                     {isCompleted && (
                       <div className="space-y-1">
                         <span className="inline-block bg-slate-800 border border-slate-600 text-slate-300 text-[10px] font-bold px-2 py-0.5 rounded">
@@ -245,15 +245,29 @@ export default function MasterRegistry({
                             {lang === 'hi' ? 'वरिष्ठ DOM clearance की प्रतीक्षा है' : 'Awaiting Sr. DOM Clearance'}
                           </span>
                         )}
-                        {/* DEPT MARK DONE BUTTON */}
+                        
+                        {/* DEPT MARK DONE BUTTON WITH SPINNER */}
                         {isApproved && (
                           user?.portalType === 'DEPT' ? (
                             <button
                               onClick={() => onMarkComplete && onMarkComplete(b.id)}
-                              className="px-3 py-1.5 bg-emerald-600/20 hover:bg-emerald-600/40 border border-emerald-500/50 text-emerald-400 rounded transition-colors text-xs font-semibold flex items-center gap-1 cursor-pointer"
+                              disabled={isProcessing}
+                              className="px-3 py-1.5 bg-emerald-600/20 hover:bg-emerald-600/40 border border-emerald-500/50 text-emerald-400 rounded transition-colors text-xs font-semibold flex items-center gap-1 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
                             >
-                              <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"></path></svg>
-                              {lang === 'hi' ? 'कार्य पूर्ण करें' : 'Mark Work Done'}
+                              {isProcessing ? (
+                                <svg className="animate-spin h-3 w-3 text-emerald-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                </svg>
+                              ) : (
+                                <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"></path>
+                                </svg>
+                              )}
+                              
+                              {isProcessing 
+                                ? (lang === 'hi' ? 'प्रसंस्करण...' : 'Processing...') 
+                                : (lang === 'hi' ? 'कार्य पूर्ण करें' : 'Mark Work Done')}
                             </button>
                           ) : (
                             <span className="text-emerald-400 text-[11px] font-mono font-bold">
@@ -261,6 +275,7 @@ export default function MasterRegistry({
                             </span>
                           )
                         )}
+                        
                         {isCompleted && (
                           <span className="text-slate-500 text-[11px] font-mono font-bold">
                             {lang === 'hi' ? 'कार्य समाप्त ✓' : 'Work Finished ✓'}
