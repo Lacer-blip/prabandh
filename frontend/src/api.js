@@ -1,5 +1,6 @@
-// --- WAKE UP VERCEL COMMIT: Forcing update to Render API ---
-const API_BASE = "https://prabandh.onrender.com/api";
+// --- LOCAL DEVELOPMENT UPDATE ---
+// Change 8000 to match whatever port your backend terminal is running on
+const API_BASE = "http://localhost:8000/api";
 
 let authToken = null;
 
